@@ -1,0 +1,58 @@
+@include('user.common.header')
+    <div class="containerInner ui-sortable">
+        <div class="row bgCover noBorder borderSolid border3px cornersAll radius0 shadow0 P0-top P0-bottom P0H noTopMargin" id="row--63347" data-trigger="none" data-animate="fade" data-delay="500" data-title="3 column row" style="padding-top: 10px; padding-bottom: 10px; margin: 0px; outline: none;">
+            <div id="col-left-148" class="col-md-4 innerContent col_left ui-resizable" data-col="left" data-trigger="none" data-animate="fade" data-delay="500" data-title="1st column" style="outline: none;">
+                <div class="col-inner bgCover  noBorder borderSolid border3px cornersAll radius0 shadow0 P0-top P0-bottom P0H noTopMargin" style="padding: 0 10px">
+                    <div class="de elHeadlineWrapper ui-droppable de-editable" id="tmp_subheadline-49617" data-de-type="headline" data-de-editing="false" data-title="sub-headline" data-ce="true" data-trigger="none" data-animate="fade" data-delay="500" style="margin-top: 25px; outline: none; cursor: pointer;" aria-disabled="false">
+                        <div class="ne elHeadline hsSize2 lh3 elMargin0 elBGStyle0 hsTextShadow0" style="text-align: center; font-size: 23px; color: rgb(71, 71, 71);" data-bold="inherit" contenteditable="false">
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="col-right-138" class="col-md-4 innerContent col_right ui-resizable" data-col="right" data-trigger="none" data-animate="fade" data-delay="500" data-title="3rd column" style="outline: none;">
+                <div class="col-inner bgCover  noBorder borderSolid border3px cornersAll radius0 shadow0 P0-top P0-bottom P0H noTopMargin" style="padding: 0 10px">
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+          
+
+
+
+
+<div class="container noTopMargin padding40-top padding40-bottom padding40H noBorder borderSolid border3px cornersAll radius0 shadow0 emptySection fullContainer bgCover" id="section--91140" data-title="Section" data-block-color="0074C7" style="padding-top: 15px; padding-bottom: 20px; outline: none; margin-top: 0px; background-color: rgb(255, 255, 255);" data-trigger="none" data-animate="fade" data-delay="500" data-hide-on="">
+    <div class="containerInner ui-sortable" style="padding-left: 0px; padding-right: 0px;"><div class="row bgCover noBorder borderSolid border3px cornersAll radius0 shadow0 P0-top P0-bottom P0H noTopMargin" id="row--35301" data-trigger="none" data-animate="fade" data-delay="500" data-title="1 column row" style="padding-top: 20px; padding-bottom: 20px; margin: 0px; outline: none;" data-hide-on="">
+            <div id="col-full-144" class="col-md-12 innerContent col_left" data-col="full" data-trigger="none" data-animate="fade" data-delay="500" data-title="1st column" style="outline: none;">
+                <div class="col-inner bgCover  noBorder borderSolid border3px cornersAll radius0 shadow0 P0-top P0-bottom P0H noTopMargin" style="padding: 0 10px">
+                   
+                   
+                    <div class="de elHeadlineWrapper ui-droppable de-editable" id="headline-20525" data-de-type="headline" data-de-editing="false" data-title="sub-headline" data-ce="true" data-trigger="none" data-animate="fade" data-delay="500" style="margin-top: 15px; outline: none; cursor: pointer; background-color: rgba(255, 255, 255, 0.36);" aria-disabled="false">
+                        <div class="ne elHeadline hsSize2 lh3 elMargin0 elBGStyle0 hsTextShadow0 de1pxLetterSpacing" style="text-align: left; color: rgb(71, 71, 71); font-size: 18px; background-color: rgba(255, 255, 255, 0.36);" data-bold="inherit" contenteditable="false" data-gramm="false" spellcheck="false"><br><br>
+
+                            <div><h3><strong>Thank you for submitting your review and confirming your shipping information.</strong></h3></div><br><br>
+
+                            <div><strong>Once your request has been approved (within 2 business days), you will receive
+                            an e-mail confirming your free product shipment.</strong> </div><br><br>
+
+                            <div><strong>This e-mail will come from <a href="mailto:contact@thelastcoat.com" target="_top">contact@thelastcoat.com</a>.</strong> </div><br><br>
+
+                            <div><strong>Thanks!</strong></div><br><br>
+
+                            <div><strong>Nick & Chad - Team TLC</strong></div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div></div>
+</div>
+
+        </div>
+
+     @include('user.common.footer') 
+    </body>
+
+</html>
