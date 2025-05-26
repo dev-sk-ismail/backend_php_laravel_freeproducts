@@ -42,12 +42,11 @@ Route::post('register', [LoginRegistrationController::class, 'register']);
 Route::get('admin/logout', [LoginRegistrationController::class, 'logout']);
 
 //Admin end
-Route::get('admin/dashboard', 'App\Http\Controllers\DashboardController@index');
-Route::get('admin/leads', 'App\Http\Controllers\LeadController@index');
-Route::get('admin/leads', 'App\Http\Controllers\LeadController@index');
-Route::get('admin/leads/view/{id}', 'App\Http\Controllers\LeadController@view');
+Route::get('admin/dashboard', [DashboardController::class, 'index']);
+Route::get('admin/leads', [LeadController::class, 'index']);
+Route::get('admin/leads/view/{id}', [LeadController::class, 'view']);
 
-Route::get('admin/products', 'App\Http\Controllers\ProductController@index');
+Route::get('admin/products', [ProductController::class, 'index']);
 Route::get('admin/products/add', [ProductController::class, 'add']);
 Route::post('admin/products/saveProduct', [ProductController::class, 'newProductCreate']);
-Route::get('admin/products/view/{id}', 'App\Http\Controllers\ProductController@view');
+Route::get('admin/products/view/{id}', [ProductController::class, 'view']);
