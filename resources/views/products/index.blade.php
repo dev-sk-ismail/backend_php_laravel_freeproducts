@@ -1,8 +1,10 @@
 <!doctype html>
 <html class="no-js" lang="">
+
 <head>
     @include('common/base')
 </head>
+
 <body>
     <!-- Left Panel -->
     @include('common/left-sidebar')
@@ -23,7 +25,7 @@
                             <div class="page-title">
                                 <ol class="breadcrumb text-right">
                                     <li class="active">
-                                    <a class="nav-link" href="{{url('/admin/products/add')}}"><i class="fa fa-plus"></i> Create New Product</a>
+                                        <a class="nav-link" href="{{url('/admin/products/add')}}"><i class="fa fa-plus"></i> Create New Product</a>
                                     </li>
                                 </ol>
                             </div>
@@ -50,22 +52,35 @@
                                             <th class="serial">#</th>
                                             <th>Name</th>
                                             <th>Price</th>
+                                            <th>Product ID</th>
+                                            <th>Variant ID</th>
                                             <th>Product Image</th>
                                             <th>Action</th>
-                                            
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @if(!empty($allproducts))
-                                            @foreach ($allproducts['data'] as $productKey => $products)
-                                                <tr>
-                                                    <td class="serial">{{ $productKey+1 }}.</td>
-                                                    <td> {{ $products->name }} </td>
-                                                    <td>  <span class="">{{ $products->price }}</span></td>
-                                                    <td> <span class=""><img src="{{asset('admin_product_images')}}/{{ $products->image }}"></span></td>
-                                                    <td> <span class="" style="cursor: pointer" onclick="viewProduct('{{ $products->id }}')">View Product</span></td>
-                                                </tr>
-                                            @endforeach
+                                        @foreach ($allproducts['data'] as $productKey => $products)
+                                        <tr>
+                                            <td class="serial">{{ $productKey+1 }}.</td>
+                                            <td> {{ $products->name }} </td>
+                                            <td> <span class="">{{ $products->price }}</span></td>
+                                            <td> <span class="">{{ $products->product_id }}</span></td>
+                                            <td> <span class="">{{ $products->variant_id }}</span></td>
+                                            <td> <span class=""><img src="{{asset('admin_product_images')}}/{{ $products->image }}"></span></td>
+                                            <td>
+                                                <span class="mr-2" style="cursor: pointer" onclick="viewProduct('{{ $products->id }}')">
+                                                    <i class="fa fa-eye"></i> View
+                                                </span>
+                                                <span style="cursor: pointer; color: #dc3545;" onclick="deleteProduct('{{ $products->id }}')">
+                                                    <i class="fa fa-trash"></i> Delete
+                                                </span>
+                                                <form id="delete-form-{{ $products->id }}" action="{{ url('admin/products/delete/' . $products->id) }}" method="POST" style="display: none;">
+                                                    {{ csrf_field() }}
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        @endforeach
                                         @endif
                                     </tbody>
                                 </table>
@@ -74,24 +89,24 @@
                             @if(!empty($allproducts))
                             <div class="next_prev">
                                 <div class="col-md-12">
-                                    <?php if($allproducts['prev_page_url'] != '') { ?>
+                                    <?php if ($allproducts['prev_page_url'] != '') { ?>
                                         <a class="btn prev" href="<?php echo $allproducts['prev_page_url'] ?>"> <i class="fa fa-arrow-left"></i> Back</a>
                                     <?php } ?>
 
-                                    <?php if($allproducts['next_page_url'] != '') { ?>
+                                    <?php if ($allproducts['next_page_url'] != '') { ?>
                                         <a class="btn next" href="<?php echo $allproducts['next_page_url'] ?>"> <i class="fa fa-arrow-right"></i> Next</a>
                                     <?php } ?>
                                 </div>
                             </div>
                             @endif
-                            
+
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-       
+
 
         <div class="clearfix"></div>
 
@@ -99,15 +114,22 @@
 
     </div><!-- /#right-panel -->
 
-<!-- Right Panel -->
+    <!-- Right Panel -->
 
-@include('common/scripts')
+    @include('common/scripts')
 
-<script type="text/javascript">
-    function viewProduct(productId) {
-       window.location.href = "{{url('admin/products/view/')}}"+'/'+productId;
-    }
-</script>
+    <script type="text/javascript">
+        function viewProduct(productId) {
+            window.location.href = "{{url('admin/products/view/')}}" + '/' + productId;
+        }
+
+        function deleteProduct(id) {
+            if (confirm('Are you sure you want to delete this product?')) {
+                document.getElementById('delete-form-' + id).submit();
+            }
+        }
+    </script>
 
 </body>
+
 </html>

@@ -46,7 +46,11 @@ Route::get('admin/dashboard', [DashboardController::class, 'index']);
 Route::get('admin/leads', [LeadController::class, 'index']);
 Route::get('admin/leads/view/{id}', [LeadController::class, 'view']);
 
-Route::get('admin/products', [ProductController::class, 'index']);
-Route::get('admin/products/add', [ProductController::class, 'add']);
-Route::post('admin/products/saveProduct', [ProductController::class, 'newProductCreate']);
-Route::get('admin/products/view/{id}', [ProductController::class, 'view']);
+Route::group(['prefix' => 'admin/products'], function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/add', [ProductController::class, 'add']);
+    Route::post('/saveProduct', [ProductController::class, 'newProductCreate']);
+    Route::get('/view/{id}', [ProductController::class, 'view']);
+    Route::post('/update/{id}', [ProductController::class, 'update']); // Add update route
+    Route::post('/delete/{id}', [ProductController::class, 'destroy']); // Add delete route
+});

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 
 use Illuminate\Http\Request;
-use Session;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\sendMailtoUser;
 use Illuminate\Support\Facades\DB;
@@ -50,10 +50,14 @@ class UserController extends Controller
 		$allproducts = DB::table('products')->select('*')->simplePaginate(10)->toArray();
 		return view('user.search_offer',compact('allproducts'));
 	}
-
 	public function usingDay(Request $request)
 	{
-		Session::put('productName',$request->get('productName'));
+		Session::put('productName', $request->get('productName'));
+		Session::put('productDetails', [
+			'product_id' => $request->get('product_id'),
+			'variant_id' => $request->get('variant_id'),
+			'price' => $request->get('price')
+		]);
 		return view('user.usingDay');
 	}
 

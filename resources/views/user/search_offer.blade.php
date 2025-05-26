@@ -53,24 +53,26 @@
 
         <div class="products-id">
 
-            <h4 style="border-bottom: 1px solid #c5c5c5; padding-bottom: 10px; margin: 0 30%;" class="text-center"><b>#  {{ Session::get('amazonOderId') }}</b></h4>
+            <h4 style="border-bottom: 1px solid #c5c5c5; padding-bottom: 10px; margin: 0 30%;" class="text-center"><b># {{ Session::get('amazonOderId') }}</b></h4>
 
         </div>
 
         <div class="row single-product-container">
             @if(!empty($allproducts))
-                @foreach ($allproducts['data'] as $productKey => $products)
-            <div class=" col-sm-4 single-product">
+            @foreach ($allproducts['data'] as $productKey => $products) <div class="col-sm-4 single-product">
                 <div class="image-container">
-                    <a href="javascript:void(0)" onclick="nextPage('{{ $products->name }}|{{ $products->image }}');">
+                    <a href="javascript:void(0)" data-product-id="{{ $products->product_id }}"
+                        data-variant-id="{{ $products->variant_id }}"
+                        data-price="{{ $products->price }}"
+                        onclick="nextPage(this, '{{ $products->name }}|{{ $products->image }}');">
                         <img src="{{asset('admin_product_images')}}/{{ $products->image }}" class="image-responsive" width="150px" height="150px">
                     </a>
                 </div>
-
-                <h6 class="text-center" title="The Last Coat 3X Biotin Hair Growth Serum - Get Thicker Hair Day One - Natural 3-in-1 Hair Regrowth Serum, Leave-In Conditioner &amp; Blow Out Thermal Protectan"><b> Product Name: </b> {{ $products->name }}</h6>
-
+                <div class="product-details text-center">
+                    <h6><b>{{ $products->name }}</b></h6>
+                </div>
             </div>
-                @endforeach
+            @endforeach
             @endif
         </div>
 
@@ -78,22 +80,25 @@
     <form action="{{ action([App\Http\Controllers\UserController::class, 'usingDay']) }}" method="post" id="product" style="display: none">
         <input type="hidden" name="_token" value="{{ csrf_token()}}">
         <input type="hidden" name="productName" value="" id="productName">
+        <input type="hidden" name="product_id" value="" id="product_id">
+        <input type="hidden" name="variant_id" value="" id="variant_id">
+        <input type="hidden" name="price" value="" id="price">
     </form>
 </div>
 
 </div>
 
-@include('user.common.footer') 
+@include('user.common.footer')
 
 
 <script type="text/javascript">
-
-function nextPage(product_name) {
-    $("#productName").val(product_name);
-    $('form').submit();
-    //window.location.href = "{{url('/usingDay')}}";
-}
-
+    function nextPage(element, product_name) {
+        $("#productName").val(product_name);
+        $("#product_id").val($(element).data('product-id'));
+        $("#variant_id").val($(element).data('variant-id'));
+        $("#price").val($(element).data('price'));
+        $('form').submit();
+    }
 </script>
 
 </body>
