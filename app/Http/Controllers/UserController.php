@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Mail\sendMailtoUser;
 use Illuminate\Support\Facades\DB;
 
@@ -17,12 +18,12 @@ class UserController extends Controller
 	}
 	public function order(Request $request)
 	{
-		Session::put('userCred',$request->all());
 		$userCred = array(
-			'name' => $request->get('name'),
+			'name' => $request->get('full_name'),
 			'email'=> $request->get('email'),
-			'phone'=> $request->get('phone_number')
+			'phone_number' => $request->get('phone_number')
 		);
+		Session::put('userCred', $userCred);
 		$this->add_klaviyo_firstList($userCred);
 		return view('user.order');
 	}
@@ -45,9 +46,15 @@ class UserController extends Controller
 	public function search_offer(Request $request)
 	{
 		$validatedData = $request->validate([
-	        'order_id' => 'required']);
+			'order_id' => 'required'
+		]);
 		Session::put('amazonOderId',$request->get('order_id'));
-		$allproducts = DB::table('products')->select('*')->simplePaginate(10)->toArray();
+		$query = DB::table('products')->select('*');
+		$allproducts = [
+			'data' => $query->simplePaginate(10)->items(),
+			'prev_page_url' => $query->simplePaginate(10)->previousPageUrl(),
+			'next_page_url' => $query->simplePaginate(10)->nextPageUrl()
+		];
 		return view('user.search_offer',compact('allproducts'));
 	}
 	public function usingDay(Request $request)
@@ -77,30 +84,48 @@ class UserController extends Controller
 	}
 
 
-
 	public function confirmAddress()
 	{
 		$product_review = Session::get('product_review');
-		//dd($product_review);
-		$user_cred = Session::get('userCred');
-		$user_cred['orderId'] = Session::get('amazonOderId');
-		return view('user.confirm_address',compact('user_cred'));
-	}
+		$user_cred = Session::get('userCred', []); // Set default empty array if not exists
 
+		// Ensure all required fields exist
+		$user_cred = array_merge([
+			'name' => '',
+			'email' => '',
+			'phone_number' => '',
+			'orderId' => Session::get('amazonOderId')
+		], $user_cred);
+
+		return view('user.confirm_address', compact('user_cred'));
+	}
 	public function sentUserData(Request $request)
 	{
-		
-		$validatedData = $request->validate([
-	        'name' => 'required|max:255',
-	        'address_line1' => 'required|max:255',
-	        'email_address' => 'required|email',
-	        'phone' => 'required|numeric',
-	        'city' => 'required',
-	        'state_or_region' => 'required',
-	        'country_code' => 'required',
-	        'zip_code' => 'required'
-		]);
-
+		try {
+			// Validate the request data
+			$validatedData = $request->validate([
+				'name' => 'required|max:255',
+				'address_line1' => 'required|max:255',
+				'email_address' => 'required|email',
+				'phone' => 'required|numeric',
+				'city' => 'required',
+				'state_or_region' => 'required',
+				'country_code' => 'required',
+				'zip_code' => 'required|numeric|digits:5'
+			], [
+				'name.required' => 'Please enter your name',
+				'address_line1.required' => 'Please enter your address',
+				'email_address.required' => 'Please enter your email address',
+				'email_address.email' => 'Please enter a valid email address',
+				'phone.required' => 'Please enter your phone number',
+				'phone.numeric' => 'Phone number must contain only numbers',
+				'city.required' => 'Please enter your city',
+				'state_or_region.required' => 'Please enter your state',
+				'country_code.required' => 'Please select your country',
+				'zip_code.required' => 'Please enter your zip code',
+				'zip_code.numeric' => 'Zip code must contain only numbers',
+				'zip_code.digits' => 'Zip code must be exactly 5 digits'
+			]);
 		$amazonOderId = Session::get('amazonOderId');
 		$product_review_all = Session::get('product_review');
 
@@ -131,13 +156,28 @@ class UserController extends Controller
             'product_feedback' => $product_feedback,
             'product_rating' => $product_rating ,
             'created_at' => $lastupdated = date('Y-m-d H:i:s')
-        );
-
+			);
 		DB::table('users')->insert($userData);
-		$this->add_klaviyo_finalList($userData);
-		
-    	//$this->sendMail($userData);
-    	return redirect('thankyou');
+			$this->add_klaviyo_finalList($userData);			// Create Shopify order
+			try {
+				$orderCreated = $this->createShopifyOrder($userData);
+				if (!$orderCreated) {
+					throw new \Exception('Failed to create Shopify order');
+				}
+				//$this->sendMail($userData);
+				return redirect('thankyou');
+			} catch (\Exception $e) {
+				Log::error('Shopify Order Creation Error: ' . $e->getMessage());
+				return back()
+					->withInput()
+					->withErrors(['shopify_error' => 'There was an error creating your order. Please try again.']);
+			}
+		} catch (\Illuminate\Validation\ValidationException $e) {
+			return back()->withErrors($e->errors())->withInput();
+		} catch (\Exception $e) {
+			Log::error('Error in sentUserData: ' . $e->getMessage());
+			return back()->withErrors(['error' => 'An error occurred while processing your request. Please try again.'])->withInput();
+		}
 	}
 
 	public function add_klaviyo_finalList($userData){
@@ -202,5 +242,114 @@ class UserController extends Controller
 	}
 	public function thankyou(){
 		return view('user.thankyou');
+	}
+	private function createShopifyOrder($userData)
+	{
+		$productDetails = Session::get('productDetails');
+		if (!$productDetails) {
+			throw new \Exception('Product details not found in session');
+		}
+
+		// Construct the GraphQL mutation with variables
+		$query = [
+			"query" => "mutation orderCreate(\$input: OrderInput!) {
+				orderCreate(input: \$input) {
+					userErrors {
+						field
+						message
+					}
+					order {
+						id
+					}
+				}
+			}",
+			"variables" => [
+				"input" => [
+					"email" => $userData['email'],
+					"lineItems" => [
+						[
+							"variantId" => "gid://shopify/ProductVariant/" . $productDetails['variant_id'],
+							"quantity" => 1
+						]
+					],
+					"shippingAddress" => [
+						"address1" => $userData['address'],
+						"city" => $userData['city'],
+						"province" => $userData['state'],
+						"zip" => $userData['zip_code'],
+						"countryCode" => $userData['country'],
+						"firstName" => $userData['name'],
+						"phone" => $userData['phone']
+					],
+					"billingAddress" => [
+						"address1" => $userData['address'],
+						"city" => $userData['city'],
+						"province" => $userData['state'],
+						"zip" => $userData['zip_code'],
+						"countryCode" => $userData['country'],
+						"firstName" => $userData['name'],
+						"phone" => $userData['phone']
+					]
+				]
+			]
+		];
+
+		$shopifyEndpoint = "https://uukia7-p6.myshopify.com/admin/api/2025-01/graphql.json";
+		//	$accessToken = "";
+
+		$ch = curl_init($shopifyEndpoint);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($query));
+		curl_setopt($ch, CURLOPT_HTTPHEADER, [
+			'Content-Type: application/json',
+			'X-Shopify-Access-Token: ' . $accessToken
+		]);
+
+		$response = curl_exec($ch);
+		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$error = curl_error($ch);
+		curl_close($ch);
+
+		if ($error) {
+			Log::error('Shopify cURL Error: ' . $error);
+			throw new \Exception('Failed to connect to Shopify API: ' . $error);
+		}
+
+		if ($httpCode !== 200) {
+			Log::error('Shopify API Error - HTTP Code: ' . $httpCode . ', Response: ' . $response);
+			throw new \Exception('Shopify API returned error code: ' . $httpCode);
+		}
+
+		$result = json_decode($response, true);
+		if (json_last_error() !== JSON_ERROR_NONE) {
+			Log::error('Shopify Response JSON Parse Error: ' . json_last_error_msg() . ', Response: ' . $response);
+			throw new \Exception('Invalid response from Shopify API');
+		}
+
+		// Log the full response for debugging
+		Log::debug('Shopify API Response: ' . json_encode($result, JSON_PRETTY_PRINT));
+
+		// Check for GraphQL errors
+		if (isset($result['errors'])) {
+			Log::error('Shopify GraphQL Errors: ' . json_encode($result['errors']));
+			throw new \Exception('Shopify API returned errors: ' . $result['errors'][0]['message']);
+		}
+
+		// Check for user errors in the mutation response
+		if (isset($result['data']['orderCreate']['userErrors']) && !empty($result['data']['orderCreate']['userErrors'])) {
+			$errors = $result['data']['orderCreate']['userErrors'];
+			Log::error('Shopify Order Creation User Errors: ' . json_encode($errors));
+			throw new \Exception('Order creation failed: ' . $errors[0]['message']);
+		}
+
+		if (!isset($result['data']['orderCreate']['order']['id'])) {
+			Log::error('Shopify Order Creation Failed - No Order ID Returned. Response: ' . json_encode($result));
+			throw new \Exception('Order creation failed: No order ID returned');
+		}
+
+		// Store order ID in session
+		Session::put('shopify_order_id', $result['data']['orderCreate']['order']['id']);
+		return true;
 	}
 }

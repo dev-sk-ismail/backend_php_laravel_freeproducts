@@ -20,124 +20,124 @@
                                     <div class="col-md-12">
                                         <form method="post" action="{{action('UserController@sentUserData') }}" accept-charset="UTF-8" class="form-horizontal _address_form" name="address">
 
-                                            <input name="_token" type="hidden" value="{{ csrf_token() }}"/>
+                                            <input name="_token" type="hidden" value="{{ csrf_token() }}" />
                                             <div class="form-group">
                                                 <label for="name" class="control-label col-sm-2">Name:</label>
                                                 <div class="col-sm-10">
                                                     <input class="form-control" name="name" type="text" value="{{ $user_cred['name'] }}">
-                                                @if ($errors->has('name'))
+                                                    @if ($errors->has('name'))
                                                     @foreach ($errors->get('name') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="pwd" class="control-label col-sm-2">Address Line 1:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control" name="address_line1" type="text" value="" >
+                                                    <input class="form-control" name="address_line1" type="text" value="">
                                                     @if ($errors->has('address_line1'))
-                                                        @foreach ($errors->get('address_line1') as $error)
-                                                            <div class="alert alert-danger">{{ $error }}</div>
-                                                        @endforeach
+                                                    @foreach ($errors->get('address_line1') as $error)
+                                                    <div class="alert alert-danger">{{ $error }}</div>
+                                                    @endforeach
                                                     @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label class="control-label col-sm-2" for="address_line2">Address Line 2:</label>
                                                 <div class="col-sm-10">
                                                     <input class="form-control" name="address_line2" type="text" value="">
-                                                @if ($errors->has('address_line2'))
+                                                    @if ($errors->has('address_line2'))
                                                     @foreach ($errors->get('address_line2') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="address_line3" class="control-label col-sm-2">Address Line 3:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="address_line3" type="text" value="" >
+                                                    <input class="form-control" name="address_line3" type="text" value="">
                                                 </div>
                                             </div>
                                             <div class="form-group">
                                                 <label for="email_address" class="control-label col-sm-2">Email:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="email_address" type="text" value="{{ $user_cred['email'] }}">
-                                                @if ($errors->has('email_address'))
+                                                    <input class="form-control" name="email_address" type="text" value="{{ $user_cred['email'] }}">
+                                                    @if ($errors->has('email_address'))
                                                     @foreach ($errors->get('email_address') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="phone" class="control-label col-sm-2">Phone:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="phone" type="text" value="{{ $user_cred['phone_number'] }}">
-                                                @if ($errors->has('phone'))
+                                                    <input class="form-control" name="phone" type="text" value="{{ $user_cred['phone_number'] }}">
+                                                    @if ($errors->has('phone'))
                                                     @foreach ($errors->get('phone') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="city" class="control-label col-sm-2">City:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="city" type="text" value="" >
-                                                @if ($errors->has('city'))
+                                                    <input class="form-control" name="city" type="text" value="">
+                                                    @if ($errors->has('city'))
                                                     @foreach ($errors->get('city') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="state_or_region" class="control-label col-sm-2">State Or Region:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="state_or_region" type="text" value="" >
+                                                    <input class="form-control" name="state_or_region" type="text" value="">
                                                     @if ($errors->has('state_or_region'))
-                                                        @foreach ($errors->get('state_or_region') as $error)
-                                                            <div class="alert alert-danger">{{ $error }}</div>
-                                                        @endforeach
+                                                    @foreach ($errors->get('state_or_region') as $error)
+                                                    <div class="alert alert-danger">{{ $error }}</div>
+                                                    @endforeach
                                                     @endif
                                                 </div>
-                                               
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="country_code" class="control-label col-sm-2">Country Code:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="country_code" type="text" value="US">
-                                                @if ($errors->has('country_code'))
+                                                    <input class="form-control" name="country_code" type="text" value="US">
+                                                    @if ($errors->has('country_code'))
                                                     @foreach ($errors->get('country_code') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <div class="form-group">
                                                 <label for="postal_code" class="control-label col-sm-2">Postal Code:</label>
                                                 <div class="col-sm-10">
-                                                    <input class="form-control"  name="postal_code" type="text">
-                                                @if ($errors->has('postal_code'))
+                                                    <input class="form-control" name="postal_code" type="text">
+                                                    @if ($errors->has('postal_code'))
                                                     @foreach ($errors->get('postal_code') as $error)
-                                                        <div class="alert alert-danger">{{ $error }}</div>
+                                                    <div class="alert alert-danger">{{ $error }}</div>
                                                     @endforeach
-                                                @endif
+                                                    @endif
                                                 </div>
-                                                
+
                                             </div>
                                             <button type="submit" class="btn btn-success hide _form_buttons">Save</button>
                                             <button type="cancel" id="address-cancel" class="btn btn-danger _form_buttons hide">Cancel</button>
-                                        
+
                                     </div>
                                 </div>
                                 <div class="address_buttons">

@@ -1,0 +1,30 @@
+{
+  "query": "mutation orderCreate($order: OrderCreateOrderInput!) { orderCreate(order: $order) { userErrors { field message } order { id financialStatus fulfillmentStatus lineItems(first: 1) { nodes { variant { id } id title quantity } } shippingAddress { address1 city province zip country firstName lastName } } } }",
+  "variables": {
+    "order": {
+      "lineItems": [
+        {
+          "variantId": "gid://shopify/ProductVariant/YOUR_PRODUCT_VARIANT_ID", // <-- REPLACE THIS with the actual Product Variant ID
+          "quantity": 1
+        }
+      ],
+      "customer": { // Optional but highly recommended: Associate a customer
+        "email": "recipient@example.com",
+        "firstName": "Recipient",
+        "lastName": "Name"
+      },
+      "shippingAddress": {
+        "address1": "123 Main St",
+        "address2": "Apt 4B", // Optional: Secondary address line
+        "city": "Anytown",
+        "province": "CA",      // Or state code, e.g., "NY"
+        "zip": "90210",
+        "country": "US",       // Two-letter country code, e.g., "GB", "CA"
+        "firstName": "Shipping",
+        "lastName": "Recipient",
+        "phone": "555-123-4567" // Optional: Phone number for shipping
+      }
+    }
+  }
+}
+ 
