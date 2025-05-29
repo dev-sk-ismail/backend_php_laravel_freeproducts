@@ -1,0 +1,10 @@
+offline order custom app credentials
+
+api token: 
+shpat_09d13d6msinfotech8cf2dd7498556329958296400
+
+api key:
+f7fd7802d015msinfotech3da7e976ce7761be3444
+
+api secret key : 
+c6958713e7d18687c1c7a2msinfotech4e2de62d3d
