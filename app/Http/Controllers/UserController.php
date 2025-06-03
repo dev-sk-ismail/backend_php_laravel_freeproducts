@@ -159,8 +159,9 @@ class UserController extends Controller
             'product_rating' => $product_rating ,
             'created_at' => $lastupdated = date('Y-m-d H:i:s')
 			);
-		DB::table('users')->insert($userData);
-		$this->add_klaviyo_finalList($userData);			// Create Shopify order
+			DB::table('users')->insert($userData);
+			$this->add_klaviyo_finalList($userData);
+			// Create Shopify order
 			try {
 				$orderCreated = $this->createShopifyOrder($userData);
 				if (!$orderCreated) {
@@ -250,57 +251,92 @@ class UserController extends Controller
 	{
 		$productDetails = Session::get('productDetails');
 		if (!$productDetails) {
+			Log::error('Product details not found in session');
 			throw new \Exception('Product details not found in session');
 		}
 
-		// Construct the GraphQL mutation with variables
+		// Set up the Shopify API request
+		$domain = config('services.shopify.domain');
+		$version = "2023-07"; // Using a stable API version
+		$accessToken = config('services.shopify.access_token');
+		$shopifyEndpoint = "https://{$domain}/admin/api/{$version}/graphql.json";
+
+		if (empty($domain) || empty($accessToken)) {
+			Log::error('Shopify configuration missing');
+			throw new \Exception('Shopify configuration is incomplete');
+		}
+
+		// Add gid://shopify/ProductVariant/ prefix if not present
+		$variantId = $productDetails['variant_id'];
+		if (strpos($variantId, 'gid://') !== 0) {
+			$variantId = "gid://shopify/ProductVariant/" . $variantId;
+		}
+
+		// Construct the GraphQL mutation
 		$query = [
-			"query" => "mutation orderCreate(\$input: OrderInput!) {
-				orderCreate(input: \$input) {
+			"query" => 'mutation draftOrderCreate($input: DraftOrderInput!) {
+				draftOrderCreate(input: $input) {
+					draftOrder {
+						id
+						order {
+							id
+						}
+					}
 					userErrors {
 						field
 						message
 					}
-					order {
-						id
-					}
 				}
-			}",
+			}',
 			"variables" => [
 				"input" => [
 					"email" => $userData['email'],
+					"note" => "Order from " . $userData['name'],
 					"lineItems" => [
 						[
-							"variantId" => "gid://shopify/ProductVariant/" . $productDetails['variant_id'],
+							"variantId" => $variantId,
 							"quantity" => 1
 						]
-					],
-					"shippingAddress" => [
-						"address1" => $userData['address'],
-						"city" => $userData['city'],
-						"province" => $userData['state'],
-						"zip" => $userData['zip_code'],
-						"countryCode" => $userData['country'],
-						"firstName" => $userData['name'],
-						"phone" => $userData['phone']
 					],
 					"billingAddress" => [
 						"address1" => $userData['address'],
 						"city" => $userData['city'],
 						"province" => $userData['state'],
 						"zip" => $userData['zip_code'],
-						"countryCode" => $userData['country'],
+						"country" => $userData['country'],
 						"firstName" => $userData['name'],
+						"lastName" => $userData['name'],
 						"phone" => $userData['phone']
+					],
+					"shippingAddress" => [
+						"address1" => $userData['address'],
+						"city" => $userData['city'],
+						"province" => $userData['state'],
+						"zip" => $userData['zip_code'],
+						"country" => $userData['country'],
+						"firstName" => $userData['name'],
+						"lastName" => $userData['name'],
+						"phone" => $userData['phone']
+					],
+					"tags" => ["freecloud9", "web-order"],
+					"customAttributes" => [
+						[
+							"key" => "source",
+							"value" => "freecloud9-website"
+						],
+						[
+							"key" => "amazonOrderId",
+							"value" => $userData['amazonOderId']
+						]
 					]
 				]
 			]
 		];
-		// Set up the Shopify API request
-		$domain = config('services.shopify.domain');
-		$version = config('services.shopify.api_version');
-		$shopifyEndpoint = "https://{$domain}/admin/api/{$version}/graphql.json";
-		$accessToken = config('services.shopify.access_token');
+
+		Log::debug('Shopify API Request:', [
+			'endpoint' => $shopifyEndpoint,
+			'query' => $query
+		]);
 
 		$ch = curl_init($shopifyEndpoint);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -310,11 +346,18 @@ class UserController extends Controller
 			'Content-Type: application/json',
 			'X-Shopify-Access-Token: ' . $accessToken
 		]);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
 		$response = curl_exec($ch);
 		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$error = curl_error($ch);
 		curl_close($ch);
+
+		Log::debug('Shopify API Response:', [
+			'httpCode' => $httpCode,
+			'response' => $response
+		]);
 
 		if ($error) {
 			Log::error('Shopify cURL Error: ' . $error);
@@ -332,29 +375,93 @@ class UserController extends Controller
 			throw new \Exception('Invalid response from Shopify API');
 		}
 
-		// Log the full response for debugging
-		Log::debug('Shopify API Response: ' . json_encode($result, JSON_PRETTY_PRINT));
-
 		// Check for GraphQL errors
 		if (isset($result['errors'])) {
-			Log::error('Shopify GraphQL Errors: ' . json_encode($result['errors']));
+			Log::error('Shopify GraphQL Errors:', $result['errors']);
 			throw new \Exception('Shopify API returned errors: ' . $result['errors'][0]['message']);
 		}
 
 		// Check for user errors in the mutation response
-		if (isset($result['data']['orderCreate']['userErrors']) && !empty($result['data']['orderCreate']['userErrors'])) {
-			$errors = $result['data']['orderCreate']['userErrors'];
-			Log::error('Shopify Order Creation User Errors: ' . json_encode($errors));
+		if (!empty($result['data']['draftOrderCreate']['userErrors'])) {
+			$errors = $result['data']['draftOrderCreate']['userErrors'];
+			Log::error('Shopify Order Creation User Errors:', $errors);
 			throw new \Exception('Order creation failed: ' . $errors[0]['message']);
 		}
 
-		if (!isset($result['data']['orderCreate']['order']['id'])) {
-			Log::error('Shopify Order Creation Failed - No Order ID Returned. Response: ' . json_encode($result));
+		if (!isset($result['data']['draftOrderCreate']['draftOrder']['id'])) {
+			Log::error('Shopify Order Creation Failed - No Order ID Returned:', $result);
 			throw new \Exception('Order creation failed: No order ID returned');
 		}
 
-		// Store order ID in session
-		Session::put('shopify_order_id', $result['data']['orderCreate']['order']['id']);
+		// After successful draft order creation, complete it
+		if (isset($result['data']['draftOrderCreate']['draftOrder']['id'])) {
+			$draftOrderId = $result['data']['draftOrderCreate']['draftOrder']['id'];
+
+			// Complete the draft order
+			$completeQuery = [
+				"query" => 'mutation draftOrderComplete($id: ID!) {
+					draftOrderComplete(id: $id, paymentPending: false) {
+						draftOrder {
+							id
+							order {
+								id
+							}
+						}
+						userErrors {
+							field
+							message
+						}
+					}
+				}',
+				"variables" => [
+					"id" => $draftOrderId
+				]
+			];
+
+			// Make the completion request
+			$ch = curl_init($shopifyEndpoint);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($completeQuery));
+			curl_setopt($ch, CURLOPT_HTTPHEADER, [
+				'Content-Type: application/json',
+				'X-Shopify-Access-Token: ' . $accessToken
+			]);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+			$completeResponse = curl_exec($ch);
+			$completeHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			$completeError = curl_error($ch);
+			curl_close($ch);
+
+			Log::debug('Shopify Draft Order Complete Response:', [
+				'httpCode' => $completeHttpCode,
+				'response' => $completeResponse
+			]);
+
+			if ($completeError || $completeHttpCode !== 200) {
+				Log::error('Failed to complete draft order:', [
+					'error' => $completeError,
+					'httpCode' => $completeHttpCode,
+					'response' => $completeResponse
+				]);
+				throw new \Exception('Failed to complete the order');
+			}
+
+			$completeResult = json_decode($completeResponse, true);
+			if (isset($completeResult['data']['draftOrderComplete']['userErrors']) && !empty($completeResult['data']['draftOrderComplete']['userErrors'])) {
+				$errors = $completeResult['data']['draftOrderComplete']['userErrors'];
+				Log::error('Draft Order Completion Errors:', $errors);
+				throw new \Exception('Failed to complete the order: ' . $errors[0]['message']);
+			}
+
+			// Store the final order ID in session
+			if (isset($completeResult['data']['draftOrderComplete']['draftOrder']['order']['id'])) {
+				Session::put('shopify_order_id', $completeResult['data']['draftOrderComplete']['draftOrder']['order']['id']);
+			}
+		}
+
 		return true;
 	}
 }
