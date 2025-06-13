@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\sendMailtoUser;
+use App\Models\Lead;
 use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
@@ -18,6 +19,12 @@ class UserController extends Controller
 	}
 	public function order(Request $request)
 	{
+		Log::debug('Starting order process', [
+			'name' => $request->get('full_name'),
+			'email' => $request->get('email'),
+			'phone' => $request->get('phone_number')
+		]);
+
 		$name = $request->get('full_name');
 		$userCred = array(
 			'name' => $name,
@@ -25,9 +32,18 @@ class UserController extends Controller
 			'phone_number' => $request->get('phone_number')
 		);
 		Session::put('userCred', $userCred);
+
+		Log::debug('Adding user to Klaviyo first list', ['userCred' => $userCred]);
 		$this->add_klaviyo_firstList($userCred);
+
 		return view('user.order');
 	}	public function add_klaviyo_firstList($userCred){
+		Log::debug('Klaviyo first list API request', [
+			'endpoint' => config('services.klaviyo.api_endpoint'),
+			'list_id' => config('services.klaviyo.list_id_first'),
+			'user_data' => $userCred
+		]);
+
 		$userdata1 = array('profiles' => $userCred);
 		$data_string = json_encode($userdata1);
 		$api_key = config('services.klaviyo.api_key');
@@ -43,25 +59,35 @@ class UserController extends Controller
 		    )
 		);
 		$result = curl_exec($ch);
+		Log::debug('Klaviyo first list API response', ['response' => $result]);
 		curl_close($ch);
 	}
 
 	public function search_offer(Request $request)
 	{
+		Log::debug('Searching offers', ['order_id' => $request->get('order_id')]);
+
 		$validatedData = $request->validate([
 			'order_id' => 'required'
 		]);
-		Session::put('amazonOderId',$request->get('order_id'));
+		Session::put('amazon_order_id', $request->get('order_id'));
 		$query = DB::table('products')->select('*');
 		$allproducts = [
 			'data' => $query->simplePaginate(10)->items(),
 			'prev_page_url' => $query->simplePaginate(10)->previousPageUrl(),
 			'next_page_url' => $query->simplePaginate(10)->nextPageUrl()
 		];
+		Log::debug('Products retrieved', ['count' => count($allproducts['data'])]);
 		return view('user.search_offer',compact('allproducts'));
 	}
 	public function usingDay(Request $request)
 	{
+		Log::debug('Product selection', [
+			'productName' => $request->get('productName'),
+			'product_id' => $request->get('product_id'),
+			'variant_id' => $request->get('variant_id')
+		]);
+
 		Session::put('productName', $request->get('productName'));
 		Session::put('productDetails', [
 			'product_id' => $request->get('product_id'),
@@ -99,13 +125,22 @@ class UserController extends Controller
 			'name' => '',
 			'email' => '',
 			'phone_number' => '',
-			'orderId' => Session::get('amazonOderId')
+			'orderId' => Session::get('amazon_order_id')
 		], $user_cred);
 
 		return view('user.confirm_address', compact('user_cred'));
 	}
-	public function sentUserData(Request $request)
+	public function generateLead(Request $request)
 	{
+		Log::debug('Starting user data submission', [
+			'request_data' => $request->except(['password']),
+			'session_data' => [
+				'amazon_order_id' => Session::get('amazon_order_id'),
+				'product_name' => Session::get('productName'),
+				'product_details' => Session::get('productDetails')
+			]
+		]);
+
 		try {
 			// Clear any previous product-related session data
 			Session::forget('voucher_code');
@@ -135,7 +170,7 @@ class UserController extends Controller
 				'zip_code.digits' => 'Zip code must be exactly 5 digits'
 			]);
 
-			$amazonOderId = Session::get('amazonOderId');
+			$amazon_order_id = Session::get('amazon_order_id');
 			$product_review_all = Session::get('product_review');
 
 			if (!empty($product_review_all)) {
@@ -150,7 +185,31 @@ class UserController extends Controller
 			$product_imageName = explode('|', $product_imageName);
 			$productName = $product_imageName[0];
 
-			$userData = array(
+			$productDetails = Session::get('productDetails');
+
+			// Create lead record
+			$lead = Lead::create([
+				'name' => $validatedData['name'],
+				'email' => $validatedData['email_address'],
+				'phone' => $validatedData['phone'],
+				'address' => $validatedData['address_line1'],
+				'city' => $validatedData['city'],
+				'state' => $validatedData['state_or_region'],
+				'country' => $validatedData['country_code'],
+				'zip_code' => $validatedData['zip_code'],
+				'amazon_order_id' => $amazon_order_id,
+				'product_name' => $productName,
+				'product_id' => $productDetails['product_id'] ?? null,
+				'variant_id' => $productDetails['variant_id'] ?? null,
+				'is_voucher' => filter_var($productDetails['is_voucher'] ?? false, FILTER_VALIDATE_BOOLEAN),
+				'voucher_code' => $productDetails['code'] ?? null,
+				'product_review' => $product_review,
+				'product_feedback' => $product_feedback,
+				'product_rating' => $product_rating,
+				'order_status' => 'draft'
+			]);
+
+			$userData = [
 				'name' => $validatedData['name'],
 				'address' => $validatedData['address_line1'],
 				'email' => $validatedData['email_address'],
@@ -159,28 +218,24 @@ class UserController extends Controller
 				'state' => $validatedData['state_or_region'],
 				'country' => $validatedData['country_code'],
 				'zip_code' => $validatedData['zip_code'],
-				'amazonOderId' => $amazonOderId,
+				'amazon_order_id' => $amazon_order_id,
 				'product_name' => $productName,
 				'product_review' => $product_review,
 				'product_feedback' => $product_feedback,
-				'product_rating' => $product_rating,
-				'created_at' => date('Y-m-d H:i:s')
-			);
-			DB::table('users')->insert($userData);
+				'product_rating' => $product_rating
+			];
+
 			$this->add_klaviyo_finalList($userData);
 
-			$productDetails = Session::get('productDetails');
-
 			// Strict checking for voucher products
-			$isVoucher = false;
-			if (isset($productDetails['is_voucher'])) {
-				// Convert various truthy values to boolean
-				$isVoucher = filter_var($productDetails['is_voucher'], FILTER_VALIDATE_BOOLEAN);
-			}
+			$isVoucher = filter_var($productDetails['is_voucher'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 			if ($isVoucher && !empty($productDetails['code'])) {
 				// Store voucher code in session for thank you page
 				Session::put('voucher_code', $productDetails['code']);
+
+				// Update lead status to voucher
+				$lead->update(['order_status' => 'voucher']);
 
 				// Clear other product details from session
 				Session::forget('productDetails');
@@ -191,10 +246,16 @@ class UserController extends Controller
 
 			// Create Shopify order only for non-voucher products
 			try {
-				$orderCreated = $this->createShopifyOrder($userData);
-				if (!$orderCreated) {
-					throw new \Exception('Failed to create Shopify order');
+				$shopifyResult = $this->createShopifyOrder($userData);
+				if (!$shopifyResult['success']) {
+					throw new \Exception($shopifyResult['error'] ?? 'Failed to create Shopify order');
 				}
+
+				// Update lead with successful order and Shopify response
+				$lead->update([
+					'order_status' => 'draft',
+					'shopify_response' => json_encode($shopifyResult['response'])
+				]);
 
 				// Clear product details from session after successful order
 				Session::forget('productDetails');
@@ -202,7 +263,10 @@ class UserController extends Controller
 
 				return redirect('thankyou');
 			} catch (\Exception $e) {
-				Log::error('Shopify Order Creation Error: ' . $e->getMessage());
+				// Log Shopify error and store in lead
+				$lead->update(['shopify_response' => $e->getMessage()]);
+
+				Session::flash('errorMessage', 'There was an error creating your order. Please try again.');
 				return back()
 					->withInput()
 					->withErrors(['shopify_error' => 'There was an error creating your order. Please try again.']);
@@ -210,7 +274,6 @@ class UserController extends Controller
 		} catch (\Illuminate\Validation\ValidationException $e) {
 			return back()->withErrors($e->errors())->withInput();
 		} catch (\Exception $e) {
-			Log::error('Error in sentUserData: ' . $e->getMessage());
 			return back()
 				->withErrors(['error' => 'An error occurred while processing your request. Please try again.'])
 				->withInput();
@@ -231,7 +294,7 @@ class UserController extends Controller
 		$product_imageName = explode('|', $product_imageName);
 		$productName = $product_imageName[0];
 
-		$userData['amazonOderId'] = Session::get('amazonOderId');
+		$userData['amazon_order_id'] = Session::get('amazon_order_id');
 		$userData['product_name'] = $productName;
 		$userData['product_review'] = $product_review;
 		$userData['product_feedback'] = $product_feedback;
@@ -291,7 +354,7 @@ class UserController extends Controller
 		$productDetails = Session::get('productDetails');
 		if (!$productDetails) {
 			Log::error('Product details not found in session');
-			throw new \Exception('Product details not found in session');
+			return ['success' => false, 'error' => 'Product details not found in session'];
 		}
 
 		// Set up the Shopify API request
@@ -302,7 +365,7 @@ class UserController extends Controller
 
 		if (empty($domain) || empty($accessToken)) {
 			Log::error('Shopify configuration missing');
-			throw new \Exception('Shopify configuration is incomplete');
+			return ['success' => false, 'error' => 'Shopify configuration is incomplete'];
 		}
 
 		// Add gid://shopify/ProductVariant/ prefix if not present
@@ -365,7 +428,7 @@ class UserController extends Controller
 						],
 						[
 							"key" => "amazonOrderId",
-							"value" => $userData['amazonOderId']
+							"value" => $userData['amazon_order_id']
 						]
 					]
 				]
@@ -400,107 +463,106 @@ class UserController extends Controller
 
 		if ($error) {
 			Log::error('Shopify cURL Error: ' . $error);
-			throw new \Exception('Failed to connect to Shopify API: ' . $error);
+			return ['success' => false, 'error' => 'Failed to connect to Shopify API: ' . $error];
 		}
 
 		if ($httpCode !== 200) {
 			Log::error('Shopify API Error - HTTP Code: ' . $httpCode . ', Response: ' . $response);
-			throw new \Exception('Shopify API returned error code: ' . $httpCode);
+			return ['success' => false, 'error' => 'Shopify API returned error code: ' . $httpCode];
 		}
 
 		$result = json_decode($response, true);
 		if (json_last_error() !== JSON_ERROR_NONE) {
 			Log::error('Shopify Response JSON Parse Error: ' . json_last_error_msg() . ', Response: ' . $response);
-			throw new \Exception('Invalid response from Shopify API');
+			return ['success' => false, 'error' => 'Invalid response from Shopify API'];
 		}
 
 		// Check for GraphQL errors
 		if (isset($result['errors'])) {
 			Log::error('Shopify GraphQL Errors:', $result['errors']);
-			throw new \Exception('Shopify API returned errors: ' . $result['errors'][0]['message']);
-		}
-
-		// Check for user errors in the mutation response
-		if (!empty($result['data']['draftOrderCreate']['userErrors'])) {
-			$errors = $result['data']['draftOrderCreate']['userErrors'];
-			Log::error('Shopify Order Creation User Errors:', $errors);
-			throw new \Exception('Order creation failed: ' . $errors[0]['message']);
-		}
-
-		if (!isset($result['data']['draftOrderCreate']['draftOrder']['id'])) {
-			Log::error('Shopify Order Creation Failed - No Order ID Returned:', $result);
-			throw new \Exception('Order creation failed: No order ID returned');
+			return ['success' => false, 'error' => 'Shopify API returned errors: ' . $result['errors'][0]['message']];
 		}
 
 		// After successful draft order creation, complete it
 		if (isset($result['data']['draftOrderCreate']['draftOrder']['id'])) {
 			$draftOrderId = $result['data']['draftOrderCreate']['draftOrder']['id'];
+			$completeResult = $this->completeDraftOrder($shopifyEndpoint, $accessToken, $draftOrderId);
 
-			// Complete the draft order
-			$completeQuery = [
-				"query" => 'mutation draftOrderComplete($id: ID!) {
-					draftOrderComplete(id: $id, paymentPending: false) {
-						draftOrder {
-							id
-							order {
-								id
-							}
-						}
-						userErrors {
-							field
-							message
-						}
-					}
-				}',
-				"variables" => [
-					"id" => $draftOrderId
-				]
-			];
-
-			// Make the completion request
-			$ch = curl_init($shopifyEndpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($completeQuery));
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Content-Type: application/json',
-				'X-Shopify-Access-Token: ' . $accessToken
-			]);
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-
-			$completeResponse = curl_exec($ch);
-			$completeHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-			$completeError = curl_error($ch);
-			curl_close($ch);
-
-			Log::debug('Shopify Draft Order Complete Response:', [
-				'httpCode' => $completeHttpCode,
-				'response' => $completeResponse
-			]);
-
-			if ($completeError || $completeHttpCode !== 200) {
-				Log::error('Failed to complete draft order:', [
-					'error' => $completeError,
-					'httpCode' => $completeHttpCode,
-					'response' => $completeResponse
-				]);
-				throw new \Exception('Failed to complete the order');
-			}
-
-			$completeResult = json_decode($completeResponse, true);
-			if (isset($completeResult['data']['draftOrderComplete']['userErrors']) && !empty($completeResult['data']['draftOrderComplete']['userErrors'])) {
-				$errors = $completeResult['data']['draftOrderComplete']['userErrors'];
-				Log::error('Draft Order Completion Errors:', $errors);
-				throw new \Exception('Failed to complete the order: ' . $errors[0]['message']);
+			if (!$completeResult['success']) {
+				return $completeResult;
 			}
 
 			// Store the final order ID in session
-			if (isset($completeResult['data']['draftOrderComplete']['draftOrder']['order']['id'])) {
-				Session::put('shopify_order_id', $completeResult['data']['draftOrderComplete']['draftOrder']['order']['id']);
+			if (isset($completeResult['response']['data']['draftOrderComplete']['draftOrder']['order']['id'])) {
+				Session::put('shopify_order_id', $completeResult['response']['data']['draftOrderComplete']['draftOrder']['order']['id']);
 			}
+
+			return [
+				'success' => true,
+				'response' => [
+					'draft_order' => $result,
+					'complete_order' => $completeResult['response']
+				]
+			];
 		}
 
-		return true;
+		return ['success' => false, 'error' => 'Failed to create draft order'];
+	}
+
+	private function completeDraftOrder($shopifyEndpoint, $accessToken, $draftOrderId)
+	{
+		$completeQuery = [
+			"query" => 'mutation draftOrderComplete($id: ID!) {
+				draftOrderComplete(id: $id, paymentPending: false) {
+					draftOrder {
+						id
+						order {
+							id
+						}
+					}
+					userErrors {
+						field
+						message
+					}
+				}
+			}',
+			"variables" => [
+				"id" => $draftOrderId
+			]
+		];
+
+		$ch = curl_init($shopifyEndpoint);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($completeQuery));
+		curl_setopt($ch, CURLOPT_HTTPHEADER, [
+			'Content-Type: application/json',
+			'X-Shopify-Access-Token: ' . $accessToken
+		]);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+		$response = curl_exec($ch);
+		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$error = curl_error($ch);
+		curl_close($ch);
+
+		if ($error || $httpCode !== 200) {
+			Log::error('Failed to complete draft order:', [
+				'error' => $error,
+				'httpCode' => $httpCode,
+				'response' => $response
+			]);
+			return ['success' => false, 'error' => 'Failed to complete the order'];
+		}
+
+		$result = json_decode($response, true);
+		if (isset($result['data']['draftOrderComplete']['userErrors']) && !empty($result['data']['draftOrderComplete']['userErrors'])) {
+			$errors = $result['data']['draftOrderComplete']['userErrors'];
+			Log::error('Draft Order Completion Errors:', $errors);
+			return ['success' => false, 'error' => 'Failed to complete the order: ' . $errors[0]['message']];
+		}
+
+		return ['success' => true, 'response' => $result];
 	}
 }

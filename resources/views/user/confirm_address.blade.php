@@ -38,7 +38,7 @@
 
                                     <div class="col-md-12">
 
-                                        <form method="post" action="{{ action([App\Http\Controllers\UserController::class, 'sentUserData']) }}" accept-charset="UTF-8" class="form-horizontal _address_form" name="address">
+                                        <form method="post" action="{{ action([App\Http\Controllers\UserController::class, 'generateLead']) }}" accept-charset="UTF-8" class="form-horizontal _address_form" name="address">
 
 
 

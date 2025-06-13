@@ -31,7 +31,7 @@ Route::get('product-survey',[UserController::class, 'product_survey']);
 Route::post('survey',[UserController::class, 'survey']);
 Route::get('survey',[UserController::class, 'survey']);
 Route::get('confirmAddress',[UserController::class, 'confirmAddress']);
-Route::post('userdata',[UserController::class, 'sentUserData']);
+Route::post('userdata', [UserController::class, 'generateLead']);
 Route::get('sendMail', [UserController::class, 'sendMail']);
 Route::get('thankyou', [UserController::class, 'thankyou']);
 
@@ -43,8 +43,15 @@ Route::get('admin/logout', [LoginRegistrationController::class, 'logout']);
 
 //Admin end
 Route::get('admin/dashboard', [DashboardController::class, 'index']);
-Route::get('admin/leads', [LeadController::class, 'index']);
-Route::get('admin/leads/view/{id}', [LeadController::class, 'view']);
+
+// Lead Management Routes
+Route::group(['prefix' => 'admin/leads', 'as' => 'leads.'], function () {
+    Route::get('/', [LeadController::class, 'index'])->name('index');
+    Route::get('/{id}', [LeadController::class, 'show'])->name('show');
+    Route::put('/{id}', [LeadController::class, 'update'])->name('update');
+    Route::delete('/{id}', [LeadController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/fulfill', [LeadController::class, 'fulfill'])->name('fulfill');
+});
 
 Route::group(['prefix' => 'admin/products'], function () {
     Route::get('/', [ProductController::class, 'index']);

@@ -53,7 +53,7 @@
 
         <div class="products-id">
 
-            <h4 style="border-bottom: 1px solid #c5c5c5; padding-bottom: 10px; margin: 0 30%;" class="text-center"><b># {{ Session::get('amazonOderId') }}</b></h4>
+            <h4 style="border-bottom: 1px solid #c5c5c5; padding-bottom: 10px; margin: 0 30%;" class="text-center"><b># {{ Session::get('amazon_order_id') }}</b></h4>
 
         </div>
 
