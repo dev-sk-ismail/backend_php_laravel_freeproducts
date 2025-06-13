@@ -83,13 +83,32 @@
                                                 </div>
                                                 <div class="col-6">
                                                     <div class="form-group">
-                                                        <label for="image" class="control-label mb-1">Image</label>
-                                                        <input type="file" id="image" name="image" class="form-control-file" accept="image/png, image/jpeg">
-                                                        <div class="mt-2">
-                                                            <label>Current Image:</label>
-                                                            <img src="{{asset('admin_product_images')}}/{{$productDetails->image}}" style="max-width: 200px;">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input" id="is_voucher" name="is_voucher" {{ isset($productDetails->is_voucher) && $productDetails->is_voucher ? 'checked' : '' }}>
+                                                            <label class="custom-control-label" for="is_voucher">Is this a voucher product?</label>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            </div>
+                                            <div class="form-group" id="code_field" style="display: {{ isset($productDetails->is_voucher) && $productDetails->is_voucher ? 'block' : 'none' }}">
+                                                <label for="code" class="control-label mb-1">Voucher Code</label>
+                                                <input id="code" name="code" type="text" class="form-control @if ($errors->has('code')) is-invalid @endif" value="{{ $productDetails->code ?? '' }}" placeholder="Enter voucher code">
+                                                @if ($errors->has('code'))
+                                                @foreach ($errors->get('code') as $error)
+                                                <span class="help-block formValidationError">{{ $error }}</span>
+                                                @endforeach
+                                                @endif
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="image" class="control-label mb-1">Image</label>
+                                                <input type="file" id="image" name="image" class="form-control-file" accept="image/png, image/jpeg">
+                                                <div class="mt-2"> <label>Current Image:</label>
+                                                    @if($productDetails->image)
+                                                    <img src="{{asset('admin_product_images')}}/{{$productDetails->image}}" style="max-width: 200px;" alt="{{ $productDetails->name }}">
+                                                    @else
+                                                    <p class="text-muted">No image uploaded</p>
+                                                    @endif
                                                 </div>
                                             </div>
 
@@ -116,6 +135,11 @@
 
     @include('common/scripts')
 
+    <script>
+        document.getElementById('is_voucher').addEventListener('change', function() {
+            document.getElementById('code_field').style.display = this.checked ? 'block' : 'none';
+        });
+    </script>
 </body>
 
 </html>

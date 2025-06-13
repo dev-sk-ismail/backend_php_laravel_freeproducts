@@ -18,8 +18,9 @@ class UserController extends Controller
 	}
 	public function order(Request $request)
 	{
+		$name = $request->get('full_name');
 		$userCred = array(
-			'name' => $request->get('full_name'),
+			'name' => $name,
 			'email'=> $request->get('email'),
 			'phone_number' => $request->get('phone_number')
 		);
@@ -65,7 +66,9 @@ class UserController extends Controller
 		Session::put('productDetails', [
 			'product_id' => $request->get('product_id'),
 			'variant_id' => $request->get('variant_id'),
-			'price' => $request->get('price')
+			'price' => $request->get('price'),
+			'is_voucher' => $request->get('is_voucher'),
+			'code' => $request->get('code')
 		]);
 		return view('user.usingDay');
 	}
@@ -104,6 +107,9 @@ class UserController extends Controller
 	public function sentUserData(Request $request)
 	{
 		try {
+			// Clear any previous product-related session data
+			Session::forget('voucher_code');
+
 			// Validate the request data
 			$validatedData = $request->validate([
 				'name' => 'required|max:255',
@@ -128,46 +134,72 @@ class UserController extends Controller
 				'zip_code.numeric' => 'Zip code must contain only numbers',
 				'zip_code.digits' => 'Zip code must be exactly 5 digits'
 			]);
-		$amazonOderId = Session::get('amazonOderId');
-		$product_review_all = Session::get('product_review');
 
-		if(!empty($product_review_all)){
-			$product_review = (isset($product_review_all['review_with_text'])? $product_review_all['review_with_text'] : '0');
-			$product_feedback = (isset($product_review_all['review'])? $product_review_all['review'] : '0');
-			$product_rating =(isset($product_review_all['review_with_number'])? $product_review_all['review_with_number'] : '0');
-		}else{
-			$product_review = $product_feedback = $product_rating = 0;
-		}
-		
-		$product_imageName = Session::get('productName');
-		$product_imageName = explode('|', $product_imageName);
-		$productName = $product_imageName[0];
+			$amazonOderId = Session::get('amazonOderId');
+			$product_review_all = Session::get('product_review');
 
-		$userData = array(
-            'name' => $validatedData['name'],
-            'address' => $validatedData['address_line1'],
-            'email' => $validatedData['email_address'],
-            'phone' => $validatedData['phone'],
-            'city' => $validatedData['city'],
-            'state' => $validatedData['state_or_region'],
-            'country' => $validatedData['country_code'],
-            'zip_code' => $validatedData['zip_code'],
-            'amazonOderId' => $amazonOderId,
-            'product_name' => $productName,
-            'product_review' => $product_review,
-            'product_feedback' => $product_feedback,
-            'product_rating' => $product_rating ,
-            'created_at' => $lastupdated = date('Y-m-d H:i:s')
+			if (!empty($product_review_all)) {
+				$product_review = (isset($product_review_all['review_with_text']) ? $product_review_all['review_with_text'] : '0');
+				$product_feedback = (isset($product_review_all['review']) ? $product_review_all['review'] : '0');
+				$product_rating = (isset($product_review_all['review_with_number']) ? $product_review_all['review_with_number'] : '0');
+			} else {
+				$product_review = $product_feedback = $product_rating = 0;
+			}
+
+			$product_imageName = Session::get('productName');
+			$product_imageName = explode('|', $product_imageName);
+			$productName = $product_imageName[0];
+
+			$userData = array(
+				'name' => $validatedData['name'],
+				'address' => $validatedData['address_line1'],
+				'email' => $validatedData['email_address'],
+				'phone' => $validatedData['phone'],
+				'city' => $validatedData['city'],
+				'state' => $validatedData['state_or_region'],
+				'country' => $validatedData['country_code'],
+				'zip_code' => $validatedData['zip_code'],
+				'amazonOderId' => $amazonOderId,
+				'product_name' => $productName,
+				'product_review' => $product_review,
+				'product_feedback' => $product_feedback,
+				'product_rating' => $product_rating,
+				'created_at' => date('Y-m-d H:i:s')
 			);
 			DB::table('users')->insert($userData);
 			$this->add_klaviyo_finalList($userData);
-			// Create Shopify order
+
+			$productDetails = Session::get('productDetails');
+
+			// Strict checking for voucher products
+			$isVoucher = false;
+			if (isset($productDetails['is_voucher'])) {
+				// Convert various truthy values to boolean
+				$isVoucher = filter_var($productDetails['is_voucher'], FILTER_VALIDATE_BOOLEAN);
+			}
+
+			if ($isVoucher && !empty($productDetails['code'])) {
+				// Store voucher code in session for thank you page
+				Session::put('voucher_code', $productDetails['code']);
+
+				// Clear other product details from session
+				Session::forget('productDetails');
+				Session::forget('productName');
+
+				return redirect('thankyou');
+			}
+
+			// Create Shopify order only for non-voucher products
 			try {
 				$orderCreated = $this->createShopifyOrder($userData);
 				if (!$orderCreated) {
 					throw new \Exception('Failed to create Shopify order');
 				}
-				//$this->sendMail($userData);
+
+				// Clear product details from session after successful order
+				Session::forget('productDetails');
+				Session::forget('productName');
+
 				return redirect('thankyou');
 			} catch (\Exception $e) {
 				Log::error('Shopify Order Creation Error: ' . $e->getMessage());
@@ -179,7 +211,9 @@ class UserController extends Controller
 			return back()->withErrors($e->errors())->withInput();
 		} catch (\Exception $e) {
 			Log::error('Error in sentUserData: ' . $e->getMessage());
-			return back()->withErrors(['error' => 'An error occurred while processing your request. Please try again.'])->withInput();
+			return back()
+				->withErrors(['error' => 'An error occurred while processing your request. Please try again.'])
+				->withInput();
 		}
 	}
 	public function add_klaviyo_finalList($userData){
@@ -249,6 +283,11 @@ class UserController extends Controller
 	}
 	private function createShopifyOrder($userData)
 	{
+		// Split the name into first and last name
+		$nameParts = explode(' ', trim($userData['name']), 2);
+		$firstName = $nameParts[0];
+		$lastName = isset($nameParts[1]) ? $nameParts[1] : $firstName; // Use first name as last name if no last name provided
+
 		$productDetails = Session::get('productDetails');
 		if (!$productDetails) {
 			Log::error('Product details not found in session');
@@ -304,8 +343,8 @@ class UserController extends Controller
 						"province" => $userData['state'],
 						"zip" => $userData['zip_code'],
 						"country" => $userData['country'],
-						"firstName" => $userData['name'],
-						"lastName" => $userData['name'],
+						"firstName" => $firstName,
+						"lastName" => $lastName,
 						"phone" => $userData['phone']
 					],
 					"shippingAddress" => [
@@ -314,8 +353,8 @@ class UserController extends Controller
 						"province" => $userData['state'],
 						"zip" => $userData['zip_code'],
 						"country" => $userData['country'],
-						"firstName" => $userData['name'],
-						"lastName" => $userData['name'],
+						"firstName" => $firstName,
+						"lastName" => $lastName,
 						"phone" => $userData['phone']
 					],
 					"tags" => ["freecloud9", "web-order"],

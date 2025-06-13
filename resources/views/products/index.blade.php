@@ -54,28 +54,30 @@
                                             <th>Price</th>
                                             <th>Product ID</th>
                                             <th>Variant ID</th>
+                                            <th>Type</th>
+                                            <th>Code</th>
                                             <th>Product Image</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        @if(!empty($allproducts))
-                                        @foreach ($allproducts['data'] as $productKey => $products)
+                                    <tbody> @if($allproducts->count() > 0)
+                                        @foreach ($allproducts as $key => $product)
                                         <tr>
-                                            <td class="serial">{{ $productKey+1 }}.</td>
-                                            <td> {{ $products->name }} </td>
-                                            <td> <span class="">{{ $products->price }}</span></td>
-                                            <td> <span class="">{{ $products->product_id }}</span></td>
-                                            <td> <span class="">{{ $products->variant_id }}</span></td>
-                                            <td> <span class=""><img src="{{asset('admin_product_images')}}/{{ $products->image }}"></span></td>
-                                            <td>
-                                                <span class="mr-2" style="cursor: pointer" onclick="viewProduct('{{ $products->id }}')">
+                                            <td class="serial">{{ ($allproducts->currentPage() - 1) * $allproducts->perPage() + $key + 1 }}.</td>
+                                            <td>{{ $product->name }}</td>
+                                            <td><span class="">{{ $product->price }}</span></td>
+                                            <td><span class="">{{ $product->product_id ?? '-' }}</span></td>
+                                            <td><span class="">{{ $product->variant_id ?? '-' }}</span></td>
+                                            <td>{{ $product->is_voucher ? 'Voucher' : 'Product' }}</td>
+                                            <td><span class="">{{ $product->code ?? '-' }}</span></td>
+                                            <td><span class="">@if($product->image)<img src="{{asset('admin_product_images')}}/{{ $product->image }}" alt="{{ $product->name }}">@else - @endif</span></td>
+                                            <td> <span class="mr-2" style="cursor: pointer" onclick="viewProduct('{{ $product->id }}')">
                                                     <i class="fa fa-eye"></i> View
                                                 </span>
-                                                <span style="cursor: pointer; color: #dc3545;" onclick="deleteProduct('{{ $products->id }}')">
+                                                <span style="cursor: pointer; color: #dc3545;" onclick="deleteProduct('{{ $product->id }}')">
                                                     <i class="fa fa-trash"></i> Delete
                                                 </span>
-                                                <form id="delete-form-{{ $products->id }}" action="{{ url('admin/products/delete/' . $products->id) }}" method="POST" style="display: none;">
+                                                <form id="delete-form-{{ $product->id }}" action="{{ url('admin/products/delete/' . $product->id) }}" method="POST" style="display: none;">
                                                     {{ csrf_field() }}
                                                 </form>
                                             </td>
@@ -84,18 +86,20 @@
                                         @endif
                                     </tbody>
                                 </table>
-                            </div> <!-- /.table-stats -->
-
-                            @if(!empty($allproducts))
+                            </div> <!-- /.table-stats --> @if($allproducts->hasPages())
                             <div class="next_prev">
                                 <div class="col-md-12">
-                                    <?php if ($allproducts['prev_page_url'] != '') { ?>
-                                        <a class="btn prev" href="<?php echo $allproducts['prev_page_url'] ?>"> <i class="fa fa-arrow-left"></i> Back</a>
-                                    <?php } ?>
+                                    @if($allproducts->previousPageUrl())
+                                    <a class="btn prev" href="{{ $allproducts->previousPageUrl() }}">
+                                        <i class="fa fa-arrow-left"></i> Back
+                                    </a>
+                                    @endif
 
-                                    <?php if ($allproducts['next_page_url'] != '') { ?>
-                                        <a class="btn next" href="<?php echo $allproducts['next_page_url'] ?>"> <i class="fa fa-arrow-right"></i> Next</a>
-                                    <?php } ?>
+                                    @if($allproducts->hasMorePages())
+                                    <a class="btn next" href="{{ $allproducts->nextPageUrl() }}">
+                                        <i class="fa fa-arrow-right"></i> Next
+                                    </a>
+                                    @endif
                                 </div>
                             </div>
                             @endif

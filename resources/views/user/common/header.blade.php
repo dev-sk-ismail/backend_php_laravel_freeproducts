@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" class="clickfunnels-com bgCover wf-proximanova-i4-active wf-proximanova-i7-active wf-proximanova-n4-active wf-proximanova-n7-active wf-active wf-proximanova-i3-active wf-proximanova-n3-active wf-proximanovasoft-n4-active wf-proximanovasoft-n7-active wf-proximasoft-n4-active wf-proximasoft-i4-active wf-proximasoft-i6-active wf-proximasoft-n6-active wf-proximasoft-i7-active wf-proximasoft-n7-active gr__app_clickfunnels_com gr__clickfunnels_com gr__get_freeboldify_com" style="overflow: initial; background-color: rgb(255, 255, 255);font-family: &quot;Roboto&quot;, Helvetica, sans-serif !important;">
+<html lang="en" class="clickfunnels-com bgCover wf-active gr__get_freeboldify_com"
+    style="overflow: initial; background-color: rgb(255, 255, 255); font-family: 'Roboto', Helvetica, sans-serif !important;">
 
 <head>
 
@@ -19,9 +20,11 @@
             position: relative;
             min-height: 100%;
         }
+
         body {
             margin-bottom: 60px;
         }
+
         .inner-footer {
             position: absolute;
             bottom: 0;
@@ -53,8 +56,9 @@
             font-size: 14px;
         }
     </style>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 </head>
+
 <body data-affiliate-param="affiliate_id" data-show-progress="true">
 
     <div class="containerWrapper" style="background:#fff;">
@@ -72,8 +76,8 @@
                     <div id="col-center-153" class="col-md-4 innerContent col_right ui-resizable" data-col="center" data-trigger="none" data-animate="fade" data-delay="500" data-title="2nd column" style="outline: none;">
                         <div class="col-inner bgCover  noBorder borderSolid border3px cornersAll radius0 shadow0 P0-top P0-bottom P0H noTopMargin" style="padding: 0 10px">
                             <div class="de elImageWrapper de-image-block elAlign_center elMargin0 ui-droppable de-editable" id="tmp_image-36899" data-de-type="img" data-de-editing="false" data-title="image" data-ce="false" data-trigger="none" data-animate="fade" data-delay="500" style="margin-top: 0px; outline: none; cursor: pointer;" aria-disabled="false" data-imagelink="#">
-                                <a href="#">
-                                    <img src="{{ asset('assets/user/images/logo.png')}}" class="elIMG ximg" alt="" height="75" style="height: 75px" data-imagelink="#">
+                                <a href="{{ url('/') }}">
+                                    <img src="{{ asset('assets/user/images/logo.png')}}" class="elIMG ximg" alt="Home" height="75" style="height: 75px" data-imagelink="{{ url('/') }}">
                                 </a>
                             </div>
                         </div>
@@ -86,5 +90,3 @@
             </div>
 
         </div>
-
-

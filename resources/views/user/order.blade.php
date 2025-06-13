@@ -30,17 +30,17 @@
 
             <div class="de elInputWrapper de-editable de-input-block elAlign_center elMargin0" id="tmp_input-85151" data-de-type="input" data-de-editing="false" data-title="input" data-ce="false" data-trigger="none" data-animate="fade" data-delay="500" type="custom_type" style="margin-top: 10px; outline: none; cursor: pointer;">
 
-                
+
 
                 <input type="custom_type" placeholder="Enter Amazon Order ID (Example: 112-1454151-2515)" name="order_id" value="" class="elInput elInput100 elAlign_left elInputMid elInputStyl0 elInputBG1 elInputBR5 elInputI0 elInputIBlack elInputIRight ceoinput required1 garlic-auto-save">
 
                 @if ($errors->has('order_id'))
 
-                    @foreach($errors->get('order_id') as $error)
+                @foreach($errors->get('order_id') as $error)
 
-                        <div class="alert alert-danger">{{ $error }}</div>
+                <div class="alert alert-danger">{{ $error }}</div>
 
-                    @endforeach
+                @endforeach
 
                 @endif
 
@@ -88,11 +88,79 @@
 
 </div>
 
-@include('user.common.footer') 
+@include('user.common.footer')
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('._check_order_id_form');
+        const orderIdInput = form.querySelector('input[name="order_id"]');
+        const submitBtn = form.querySelector('button');
+
+        // Create a div for validation message
+        const validationMessage = document.createElement('div');
+        validationMessage.style.color = '#dc3545';
+        validationMessage.style.marginTop = '5px';
+        validationMessage.style.display = 'none';
+        orderIdInput.parentNode.appendChild(validationMessage);
+
+        // Function to validate Amazon order ID format
+        function validateAmazonOrderId(orderId) {
+            // Amazon order ID format: XXX-XXXXXXX-XXXXXXX (3-7-7 digits/letters)
+            const amazonPattern = /^\d{3}-\d{7}-\d{7}$/;
+            return amazonPattern.test(orderId);
+        }
+
+        // Add input event listener for real-time validation
+        orderIdInput.addEventListener('input', function() {
+            const orderId = this.value.trim();
+
+            if (orderId && !validateAmazonOrderId(orderId)) {
+                validationMessage.textContent = 'Please enter a valid Amazon Order ID (Example: 123-1234567-1234567)';
+                validationMessage.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+            } else {
+                validationMessage.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+            }
+        });
+
+        // Add form submit validation
+        form.addEventListener('submit', function(event) {
+            const orderId = orderIdInput.value.trim();
+
+            if (!validateAmazonOrderId(orderId)) {
+                event.preventDefault();
+                validationMessage.textContent = 'Please enter a valid Amazon Order ID (Example: 123-1234567-1234567)';
+                validationMessage.style.display = 'block';
+                orderIdInput.focus();
+            }
+        });
+
+        // Add formatter to automatically add hyphens
+        orderIdInput.addEventListener('keyup', function(e) {
+            let value = this.value.replace(/\D/g, '').substring(0, 17); // Remove non-digits and limit to 17 characters
+            let formattedValue = '';
+
+            if (value.length > 0) {
+                if (value.length > 3) {
+                    formattedValue += value.substring(0, 3) + '-';
+                    if (value.length > 10) {
+                        formattedValue += value.substring(3, 10) + '-';
+                        formattedValue += value.substring(10);
+                    } else {
+                        formattedValue += value.substring(3);
+                    }
+                } else {
+                    formattedValue = value;
+                }
+                this.value = formattedValue;
+            }
+        });
+    });
+</script>
 
 </body>
-
-
 
 </html>

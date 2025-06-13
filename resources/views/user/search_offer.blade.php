@@ -58,18 +58,22 @@
         </div>
 
         <div class="row single-product-container">
-            @if(!empty($allproducts))
-            @foreach ($allproducts['data'] as $productKey => $products) <div class="col-sm-4 single-product">
+            @if(!empty($allproducts)) @foreach ($allproducts['data'] as $productKey => $products) <div class="col-sm-4 single-product">
                 <div class="image-container">
                     <a href="javascript:void(0)" data-product-id="{{ $products->product_id }}"
                         data-variant-id="{{ $products->variant_id }}"
                         data-price="{{ $products->price }}"
+                        data-is-voucher="{{ $products->is_voucher }}"
+                        data-code="{{ $products->code }}"
                         onclick="nextPage(this, '{{ $products->name }}|{{ $products->image }}');">
                         <img src="{{asset('admin_product_images')}}/{{ $products->image }}" class="image-responsive" width="150px" height="150px">
                     </a>
                 </div>
                 <div class="product-details text-center">
                     <h6><b>{{ $products->name }}</b></h6>
+                    @if($products->is_voucher)
+                    <span class="badge badge-info">Gift Voucher</span>
+                    @endif
                 </div>
             </div>
             @endforeach
@@ -83,6 +87,8 @@
         <input type="hidden" name="product_id" value="" id="product_id">
         <input type="hidden" name="variant_id" value="" id="variant_id">
         <input type="hidden" name="price" value="" id="price">
+        <input type="hidden" name="is_voucher" value="" id="is_voucher">
+        <input type="hidden" name="code" value="" id="code">
     </form>
 </div>
 
@@ -97,6 +103,8 @@
         $("#product_id").val($(element).data('product-id'));
         $("#variant_id").val($(element).data('variant-id'));
         $("#price").val($(element).data('price'));
+        $("#is_voucher").val($(element).data('is-voucher'));
+        $("#code").val($(element).data('code'));
         $('form').submit();
     }
 </script>
