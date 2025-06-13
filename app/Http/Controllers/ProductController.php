@@ -39,8 +39,6 @@ class ProductController extends Controller
         }
 
         try {
-            \Log::info('Product Create Request:', $request->all());
-
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
                 'price' => 'required|string|max:255',
@@ -49,8 +47,6 @@ class ProductController extends Controller
                 'is_voucher' => 'nullable|in:on,1,true',
                 'code' => 'nullable|string|max:255'
             ]);
-
-            \Log::info('Validated Data:', $validatedData);
 
             $insertData = [
                 'name' => $validatedData['name'],
@@ -62,8 +58,6 @@ class ProductController extends Controller
                 'image' => '',
                 'updated_at' => now()
             ];
-
-            \Log::info('Insert Data:', $insertData);
 
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
@@ -81,12 +75,10 @@ class ProductController extends Controller
             Session::flash('successMessage', 'Product created successfully.');
             return redirect('/admin/products');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Validation Error:', ['errors' => $e->errors()]);
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
         } catch (\Exception $e) {
-            \Log::error('Error creating product:', ['error' => $e->getMessage()]);
             Session::flash('errorMessage', 'Error creating product: ' . $e->getMessage());
             return redirect()->back()->withInput();
         }
@@ -109,8 +101,6 @@ class ProductController extends Controller
         }
 
         try {
-            \Log::info('Product Update Request:', $request->all());
-
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
                 'price' => 'required|string|max:255',
@@ -119,8 +109,6 @@ class ProductController extends Controller
                 'is_voucher' => 'nullable|in:on,1,true',
                 'code' => 'nullable|string|max:255'
             ]);
-
-            \Log::info('Validated Data:', $validatedData);
 
             $updateData = [
                 'name' => $validatedData['name'],
@@ -131,8 +119,6 @@ class ProductController extends Controller
                 'code' => $request->input('code'),
                 'updated_at' => now()
             ];
-
-            \Log::info('Update Data:', $updateData);
 
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
@@ -162,12 +148,10 @@ class ProductController extends Controller
             Session::flash('successMessage', 'Product updated successfully.');
             return redirect('/admin/products');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Validation Error:', ['errors' => $e->errors()]);
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
         } catch (\Exception $e) {
-            \Log::error('Error updating product:', ['error' => $e->getMessage()]);
             Session::flash('errorMessage', 'Error updating product: ' . $e->getMessage());
             return redirect()->back()->withInput();
         }
